@@ -1,0 +1,10 @@
+parameters:
+  sdk: ''
+
+steps:
+  - task: UseDotNet@2
+    displayName: 'Install .NET Core 3.0 SDK'
+    inputs:
+      packageType: 'sdk'
+      version: '${{ parameters.sdk }}'
+      includePreviewVersions: true
