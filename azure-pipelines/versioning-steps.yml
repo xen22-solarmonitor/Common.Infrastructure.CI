@@ -1,4 +1,11 @@
-properties:
+###############################################################################################
+# archive-steps.yml
+###############################################################################################
+
+# this set of steps calculates the semantic version using GitVersion, then versions
+# projects and AssemblyInfo.cs files in the solution.
+
+parameters:
   buildConfiguration: 'Release'
   apiName: ''
   apiDescription: ''  
