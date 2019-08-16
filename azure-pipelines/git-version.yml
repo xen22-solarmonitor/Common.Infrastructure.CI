@@ -1,3 +1,9 @@
+###############################################################################################
+# git-version.yml
+###############################################################################################
+
+# this step calls GitVersion to calculate the sematic version based on GIT tags 
+
 steps:
   - task: GitVersion@5
     displayName: 'GitVersion'
@@ -34,4 +40,4 @@ steps:
       echo "CommitsSinceVersionSource:       $(GitVersion.CommitsSinceVersionSource)"
       echo "CommitsSinceVersionSourcePadded: $(GitVersion.CommitsSinceVersionSourcePadded)"
       echo "CommitDate:                      $(GitVersion.CommitDate)"
-    displayName: 'Logging GitVersion variables'
+    displayName: 'Log GitVersion variables'

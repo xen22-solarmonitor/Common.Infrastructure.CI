@@ -1,0 +1,20 @@
+###############################################################################################
+# create-nuget-package.yml
+###############################################################################################
+
+# this step generates the NuGet package for the given project
+
+parameters:
+  buildConfiguration: 'Release'
+  projectFile: ''
+
+steps:
+  - task: DotNetCoreCLI@2
+    displayName: 'Create Proxy Client Nuget packages (nupkg and snupkg)'
+    condition: ne(variables['swaggerChanged'], '0')
+    inputs:
+      command: 'custom'
+      projects: '${{ parameters.projectFile }}'
+      custom: 'pack'
+      arguments: '--no-build --configuration ${{ parameters.buildConfiguration }} --output $(System.DefaultWorkingDirectory)/packages'
+

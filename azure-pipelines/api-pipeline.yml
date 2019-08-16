@@ -28,201 +28,52 @@ stages:
 
     steps:
     
+    ###############################################################################################
+
     - checkout: self
       submodules: true
-      
-    - template: 'git-version.yml'
 
-    # this step uses GitVersion to set a few variables that are available across all 
-    # stages of the build (by saving them each into a separate artifact file under /variables)
-    # To retrieve them, invoke retrieve-build-variables.yml@templates
-    # - template: 'azure-pipelines/set-build-variables.yml@templates'
+    ###############################################################################################
 
-    # this step just saves the version to a file - the whole variables folder will be published
-    # as an archive at the end of this stage so that it can be downloaded and used in later stages
-    - bash: |
-        mkdir -p $(Pipeline.Workspace)/variables
-        echo "$(GitVersion.SemVer)" > $(Pipeline.Workspace)/variables/buildVersion
-        cat $(Pipeline.Workspace)/variables/buildVersion
-      displayName: 'Saving buildVersion variable into a file'
-
-    - task: Assembly-Info-NetFramework@2
-      displayName: 'Version API'
-      inputs:
-        Configuration: '${{ parameters.buildConfiguration }}'
-        Path: '$(Build.SourcesDirectory)/src/${{ parameters.apiName }}'
-        FileNames: '**/AssemblyInfo.cs'
-        InsertAttributes: false
-        FileEncoding: 'auto'
-        WriteBOM: false
-        Title: '${{ parameters.apiDescription }}'
-        Product: '${{ parameters.productDescription }}'
-        Description: 'semanticVersion=$(GitVersion.FullSemVer); branch=$(Build.SourceBranch); commit=$(GitVersion.ShortSha)'
-        Company: 'Adaptive Development'
-        Copyright: 'Ciprian Toader'
-        VersionNumber: '$(GitVersion.AssemblySemVer)'
-        FileVersionNumber: '$(GitVersion.AssemblySemFileVer)'
-        InformationalVersion: '$(GitVersion.InformationalVersion)'
-
-    - bash: |
-        export NUGET_VERSION="$(GitVersion.NuGetVersionV2)-$(GitVersion.BuildMetaData)"
-        if [[ $(Build.SourceBranch) == "refs/heads/master" ]]; then
-          NUGET_VERSION="$(GitVersion.Major).$(GitVersion.Minor).$(GitVersion.Patch)-$(GitVersion.BuildMetaData)"
-        elif [[ $(Build.SourceBranch) == "refs/heads/develop" ]]; then
-          # Note: GitVersion increments develop builds automatically so we don't need to append the metadata to ensure uniqueness
-          NUGET_VERSION="$(GitVersion.NuGetVersionV2)"
-        fi
-        echo '##vso[task.setvariable variable=nugetVersion;]'$NUGET_VERSION
-      displayName: 'Calculate Nuget version'
-
-    - bash: 'echo nugetVersion: $(nugetVersion)'
-      displayName: 'Display Nuget version'
-        
-    - task: Assembly-Info-NetCore@2
-      displayName: 'Version Proxy client'
-      inputs:
-        Path: '$(Build.SourcesDirectory)/src/${{ parameters.apiName }}Proxy'
-        FileNames: '**/*.csproj'
-        InsertAttributes: true
-        FileEncoding: 'auto'
-        WriteBOM: false
-        GeneratePackageOnBuild: false
-        Authors: 'Ciprian Toader'
-        Company: 'Adaptive Development'
-        Product: '${{ parameters.productDescription }}'
-        Description: '${{ parameters.apiDescription }}'
-        VersionNumber: '$(GitVersion.FullSemVer)'
-        FileVersionNumber: '$(GitVersion.AssemblySemFileVer)'
-        InformationalVersion: '$(GitVersion.InformationalVersion)'
-        #PackageVersion: '$(GitVersion.FullSemVer)'
-        #PackageVersion: '$(GitVersion.NuGetVersionV2)-$(GitVersion.BuildMetaDataPadded)'
-        PackageVersion: '$(nugetVersion)'
-
-    - bash: sudo apt-get install jq
-      displayName: 'Installing build dependency: jq'
-
-    - template: 'install-custom-sdk.yml'
+    - template: 'build-dependencies-steps.yml'
       parameters:
-        sdk: '${{ parameters.customDotnetVersion }}'
-        
-    # create links to .NET Core Runtimes from v. 2.2 because it is needed by 'dotnet swagger' CLI
-    - bash: ln -s /usr/share/dotnet/shared/Microsoft.NETCore.App/2.2.?/ $(dirname `which dotnet`)/shared/Microsoft.NETCore.App
-      displayName: 'Create link to NETCoreApp 2.2 runtime (for dotnet CLI 3.0)'
-    - bash: ln -s /usr/share/dotnet/shared/Microsoft.AspNetCore.App/2.2.?/ $(dirname `which dotnet`)/shared/Microsoft.AspNetCore.App
-      displayName: 'Create link to AspNetCore 2.2 runtime (for dotnet CLI 3.0)'
-        
-    - task: DotNetCoreCLI@2
-      displayName: 'Restore NuGet dependencies'
-      inputs:
-        command: 'restore'
-        projects: './${{ parameters.apiName }}.sln'
-        feedsToUse: 'config'
-        nugetConfigPath: './NuGet.Config'
-        
-    - task: DotNetCoreCLI@2
-      displayName: 'Build solution'
-      inputs:
-        command: 'build'
-        projects: './${{ parameters.apiName }}.sln'
-        arguments: '--no-restore --configuration ${{ parameters.buildConfiguration }}'
+        customDotnetVersion:  '${{ parameters.customDotnetVersion }}'
 
-    - task: DotNetCoreCLI@2
-      displayName: 'Publish API binaries'
-      inputs:
-        command: 'publish'
-        projects: './${{ parameters.apiName }}.sln'
-        zipAfterPublish: false
-        publishWebProjects: true
-        arguments: '--no-build --configuration ${{ parameters.buildConfiguration }}'
+    ###############################################################################################
+    - template: 'versioning-steps.yml'
+      parameters:
+        buildConfiguration:   '${{ parameters.buildConfiguration }}'
+        apiName:              '${{ parameters.apiName }}'
+        apiDescription:       '${{ parameters.apiDescription }}'
+        productDescription:   '${{ parameters.productDescription }}'
 
-    - bash: 'cp $(System.DefaultWorkingDirectory)/src/${{ parameters.apiName }}Proxy/AutoGeneratedSwaggerDefinition/swagger.json $(System.DefaultWorkingDirectory)/swagger_$(GitVersion.SemVer).json'
+    ###############################################################################################
 
-    # archive swagger.json immediately after building to increase chances it will be saved to the build
-    # even if one of the build steps fails
-    - task: PublishBuildArtifacts@1
-      displayName: 'Publish generated swagger.json file for this build.'
-      inputs:
-        pathToPublish: '$(System.DefaultWorkingDirectory)/swagger_$(GitVersion.SemVer).json'
-        artifactName: 'swagger'
+    - template: 'build-steps.yml'
+      parameters:
+        buildConfiguration:   '${{ parameters.buildConfiguration }}'
+        apiName:              '${{ parameters.apiName }}'
 
-    - task: DownloadPipelineArtifact@2
-      displayName: 'Retrieve swagger.json from previous build'
-      # TODO: review this condition (for this step and all related steps)
-      condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
-      inputs:
-        artifact: 'swagger'
-        path: '$(Pipeline.Workspace)'
-        source: 'specific'
-        pipeline: '$(System.DefinitionId)'
-        project: '$(System.TeamProjectId)'
-        runVersion: 'latestFromBranch'
-        runBranch: '$(Build.SourceBranch)'
+    ###############################################################################################
 
-    - bash: 'echo +++ swaggerChanged variable before being set: $(swaggerChanged)'
+    - template: 'check-swagger-changed-steps.yml'
+      parameters:
+        buildConfiguration:   '${{ parameters.buildConfiguration }}'
+        apiName:              '${{ parameters.apiName }}'
 
-    - bash: |
-        ls -la $(Pipeline.Workspace)/swagger*.json
-        SWAGGER_OUTPUT=$(cmp $(System.DefaultWorkingDirectory)/src/${{ parameters.apiName }}Proxy/AutoGeneratedSwaggerDefinition/swagger.json $(Pipeline.Workspace)/swagger*.json)
-        export SWAGGER_CMP_EXIT_CODE=$?
-        #echo $? | setvar -name swaggerChanged -isOutput
-        echo SWAGGER_CMP_EXIT_CODE=$SWAGGER_CMP_EXIT_CODE
-        echo '##vso[task.setvariable variable=swaggerChanged;]'$SWAGGER_CMP_EXIT_CODE
-      condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
-      displayName: 'Creating Azure pipelines variable swaggerChanged'
+    ###############################################################################################
 
-    #        - bash: |
-    #            SWAGGER_OUTPUT=$(cmp $(Pipeline.Workspace)/BuiltSourceTree/src/Api.Core.SolarMeasurementsProxy/AutoGeneratedSwaggerDefinition/swagger.json $(Pipeline.Workspace)/swagger.json)
-    #            SWAGGER_CHANGED=$?
-    #            echo "bash comparison stdout: $SWAGGER_OUTPUT"
-    #            echo "bash comparison exit code: $SWAGGER_CHANGED"
-    #            echo "##vso[task.setvariable variable=swaggerChanged]$SWAGGER_CHANGED"
-    #          displayName: 'Creating Azure pipelines variable swaggerChanged'
+    - template: 'create-nuget-package.yml'
+      parameters:
+        buildConfiguration:   '${{ parameters.buildConfiguration }}'
+        projectFile:          '$(System.DefaultWorkingDirectory)/src/${{ parameters.apiName }}Proxy/*.csproj'
 
-    - bash: 'echo +++ swaggerChanged variable after being set: $(swaggerChanged)'
+    ###############################################################################################
 
-    - task: DotNetCoreCLI@2
-      displayName: 'Create Proxy Client Nuget packages (nupkg and snupkg)'
-      condition: ne(variables['swaggerChanged'], '0')
-      inputs:
-        command: 'custom'
-        projects: '$(System.DefaultWorkingDirectory)/src/${{ parameters.apiName }}Proxy/*.csproj'
-        custom: 'pack'
-        arguments: '--no-build --configuration ${{ parameters.buildConfiguration }} --output $(System.DefaultWorkingDirectory)/packages'
-
-    - publish: $(System.DefaultWorkingDirectory)/packages
-      displayName: 'Archive Nuget packages'
-      condition: ne(variables['swaggerChanged'], '0')
-      artifact: ProxyNugetPackages
-
-        
-    - bash: ls -la $(System.DefaultWorkingDirectory)/src/${{ parameters.apiName }}/bin/${{ parameters.buildConfiguration }}/netcoreapp3.0
-
-    - publish: $(System.DefaultWorkingDirectory)/src/${{ parameters.apiName }}/bin/${{ parameters.buildConfiguration }}/netcoreapp3.0/publish
-      displayName: 'Archive API binaries'
-      artifact: ApiBinaries
-
-    - publish: $(System.DefaultWorkingDirectory)/src/${{ parameters.apiName }}/Dockerfile
-      displayName: 'Archive Dockerfile'
-      artifact: Dockerfile
-
-      # Note: we cannot publish just the binaries for the unit and integration tests because we also need the source code
-#       when we do code coverage
-#    - publish: $(System.DefaultWorkingDirectory)/test/unit/Api.Core.SolarMeasurementsUnitTests/bin/${{ parameters.buildConfiguration }}/netcoreapp3.0/publish/
-#      displayName: 'Archive Unit test binaries'
-#      artifact: UnitTestBinaries
-#
-#    - publish: $(System.DefaultWorkingDirectory)/test/integration/Api.Core.SolarMeasurementsIntegrationTests/bin/${{ parameters.buildConfiguration }}/netcoreapp3.0/publish/
-#      displayName: 'Archive Integration test binaries'
-#      artifact: IntegrationTestBinaries
-
-    - publish: $(System.DefaultWorkingDirectory)
-      displayName: 'Archive fully built source tree'
-      artifact: BuiltSourceTree
-
-      # Publish all variables from this stage as a pipeline artifact
-    - publish: $(Pipeline.Workspace)/variables
-      displayName: 'Publishing variables for a later stage'
-      artifact: variables
+    - template: 'archive-steps.yml'
+      parameters:
+        buildConfiguration:   '${{ parameters.buildConfiguration }}'
+        apiName:              '${{ parameters.apiName }}'
 
 
   #############################################################################################        
@@ -340,6 +191,7 @@ stages:
         - bash: echo Retrieved buildVersion $(buildVersion)
           displayName: 'Log buildVersion $(buildVersion)'
 
+
         - task: Docker@2
           displayName: 'Login to DockerHub'
           inputs:
@@ -380,29 +232,50 @@ stages:
         - download: current
           artifact: BuiltSourceTree
 
-        - task: DownloadPipelineArtifact@2
-          displayName: 'Retrieve swagger.json from previous build'
-          inputs:
-            artifact: 'swagger'
-            path: '$(Pipeline.Workspace)'
-            source: 'specific'
-            pipeline: '$(System.DefinitionId)'
-            project: '$(System.TeamProjectId)'
-            runVersion: 'latestFromBranch'
-            runBranch: '$(Build.SourceBranch)'
+          ### TODO: replace this with custom step
 
-        - bash: 'echo +++ swaggerChanged variable before being set: $(swaggerChanged)'
-            
+        - download: current
+          displayName: 'Retrieve "variables" from pipeline archive'
+          artifact: variables
+
         - bash: |
-            ls -la $(Pipeline.Workspace)/swagger*.json
-            SWAGGER_OUTPUT=$(cmp $(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}Proxy/AutoGeneratedSwaggerDefinition/swagger.json $(Pipeline.Workspace)/swagger*.json)
-            export SWAGGER_CMP_EXIT_CODE=$?
-            echo SWAGGER_CMP_EXIT_CODE=$SWAGGER_CMP_EXIT_CODE
-            echo '##vso[task.setvariable variable=swaggerChanged;]'$SWAGGER_CMP_EXIT_CODE
-          condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
-          displayName: 'Creating Azure pipelines variable swaggerChanged'
+            ls -la $(Pipeline.Workspace)/variables
+            cat $(Pipeline.Workspace)/variables/swaggerChanged
+            export SWAGGER_CHANGED=`cat $(Pipeline.Workspace)/variables/swaggerChanged`
+            echo buildVer is $SWAGGER_CHANGED
+            echo '##vso[task.setvariable variable=swaggerChanged;]'$SWAGGER_CHANGED
+          displayName: 'Retrieve swaggerChanged'
+          
+        - bash: echo Retrieved swaggerChanged $(swaggerChanged)
+          displayName: 'Log swaggerChanged $(swaggerChanged)'
 
-        - bash: 'echo +++ swaggerChanged variable after being set: $(swaggerChanged)'
+        ###
+
+
+
+        # - task: DownloadPipelineArtifact@2
+        #   displayName: 'Retrieve swagger.json from previous build'
+        #   inputs:
+        #     artifact: 'swagger'
+        #     path: '$(Pipeline.Workspace)'
+        #     source: 'specific'
+        #     pipeline: '$(System.DefinitionId)'
+        #     project: '$(System.TeamProjectId)'
+        #     runVersion: 'latestFromBranch'
+        #     runBranch: '$(Build.SourceBranch)'
+
+        # - bash: 'echo +++ swaggerChanged variable before being set: $(swaggerChanged)'
+            
+        # - bash: |
+        #     ls -la $(Pipeline.Workspace)/swagger*.json
+        #     SWAGGER_OUTPUT=$(cmp $(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}Proxy/AutoGeneratedSwaggerDefinition/swagger.json $(Pipeline.Workspace)/swagger*.json)
+        #     export SWAGGER_CMP_EXIT_CODE=$?
+        #     echo SWAGGER_CMP_EXIT_CODE=$SWAGGER_CMP_EXIT_CODE
+        #     echo '##vso[task.setvariable variable=swaggerChanged;]'$SWAGGER_CMP_EXIT_CODE
+        #   condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+        #   displayName: 'Creating Azure pipelines variable swaggerChanged'
+
+        # - bash: 'echo +++ swaggerChanged variable after being set: $(swaggerChanged)'
 
         - download: current 
           displayName: 'Download Nuget packages'
