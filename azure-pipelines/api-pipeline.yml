@@ -362,7 +362,7 @@ stages:
             command: 'push'
             Dockerfile: '$(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}/Dockerfile'
             tags: '$(buildVersion)'
-            repository: '${{ parameters.dockerId }}/$(dockerContainerName)'
+            repository: '${{ parameters.dockerId }}/${{ parameters.dockerContainerTag }}'
 
     - job: CreateApiProxy
       displayName: 'Create and publish API Proxy to NuGet repo'
