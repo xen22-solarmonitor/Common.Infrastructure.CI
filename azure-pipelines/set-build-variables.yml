@@ -1,0 +1,11 @@
+parameters:
+  PipelineWorkspace: ''
+
+steps:
+  # this step just saves the version to a file - the whole variables folder will be published
+  # as an archive at the end of this stage so that it can be downloaded and used in later stages
+  - bash: |
+      mkdir -p ${{ parameters.PipelineWorkspace }}/variables
+      echo "$(GitVersion.SemVer)" > $(Pipeline.Workspace)/variables/buildVersion
+      cat $(Pipeline.Workspace)/variables/buildVersion
+    displayName: 'Saving build variables into the artifacts file'
