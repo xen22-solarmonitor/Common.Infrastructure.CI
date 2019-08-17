@@ -1,5 +1,5 @@
 ###############################################################################################
-# archive-steps.yml
+# multistep.archive-artifacts.yml
 ###############################################################################################
 
 # this set of steps archives various binaries and other files produced by the build:

@@ -1,5 +1,5 @@
 ###############################################################################################
-# archive-steps.yml
+# multistep.version-assemblies.yml
 ###############################################################################################
 
 # this set of steps calculates the semantic version using GitVersion, then versions
@@ -12,7 +12,7 @@ parameters:
   productDescription: ''
 
 steps:
-    - template: 'git-version.yml'
+    - template: 'step.git-version.yml'
 
     # this step uses GitVersion to set a few variables that are available across all 
     # stages of the build (by saving them each into a separate artifact file under /variables)

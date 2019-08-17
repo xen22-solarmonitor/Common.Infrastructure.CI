@@ -1,5 +1,5 @@
 ###############################################################################################
-# git-version.yml
+# step.git-version.yml
 ###############################################################################################
 
 # this step calls GitVersion to calculate the sematic version based on GIT tags 

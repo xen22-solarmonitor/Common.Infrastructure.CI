@@ -35,12 +35,13 @@ stages:
 
     ###############################################################################################
 
-    - template: 'build-dependencies-steps.yml'
+    - template: 'multistep.install-build-dependencies.yml'
       parameters:
         customDotnetVersion:  '${{ parameters.customDotnetVersion }}'
 
     ###############################################################################################
-    - template: 'versioning-steps.yml'
+
+    - template: 'multistep.version-assemblies.yml'
       parameters:
         buildConfiguration:   '${{ parameters.buildConfiguration }}'
         apiName:              '${{ parameters.apiName }}'
@@ -49,28 +50,41 @@ stages:
 
     ###############################################################################################
 
-    - template: 'build-steps.yml'
+    - template: 'multistep.pre-build-tasks.yml'
+      parameters:
+        apiName:              '${{ parameters.apiName }}'
+
+    ###############################################################################################
+
+    - template: 'multistep.build.yml'
       parameters:
         buildConfiguration:   '${{ parameters.buildConfiguration }}'
         apiName:              '${{ parameters.apiName }}'
 
     ###############################################################################################
 
-    - template: 'check-swagger-changed-steps.yml'
+    - template: 'multistep.check-swagger-committed.yml'
       parameters:
         buildConfiguration:   '${{ parameters.buildConfiguration }}'
         apiName:              '${{ parameters.apiName }}'
 
     ###############################################################################################
 
-    - template: 'create-nuget-package.yml'
+    - template: 'multistep.check-swagger-changed.yml'
+      parameters:
+        buildConfiguration:   '${{ parameters.buildConfiguration }}'
+        apiName:              '${{ parameters.apiName }}'
+
+    ###############################################################################################
+
+    - template: 'step.create-nuget-package.yml'
       parameters:
         buildConfiguration:   '${{ parameters.buildConfiguration }}'
         projectFile:          '$(System.DefaultWorkingDirectory)/src/${{ parameters.apiName }}Proxy/*.csproj'
 
     ###############################################################################################
 
-    - template: 'archive-steps.yml'
+    - template: 'multistep.archive-artifacts.yml'
       parameters:
         buildConfiguration:   '${{ parameters.buildConfiguration }}'
         apiName:              '${{ parameters.apiName }}'
@@ -99,7 +113,7 @@ stages:
         - download: current
           artifact: BuiltSourceTree
             
-        - template: 'install-custom-sdk.yml'
+        - template: 'step.install-custom-sdk.yml'
           parameters:
             sdk: '${{ parameters.customDotnetVersion }}'
             
@@ -128,7 +142,7 @@ stages:
         - download: current
           artifact: BuiltSourceTree
 
-        - template: 'install-custom-sdk.yml'
+        - template: 'step.install-custom-sdk.yml'
           parameters:
             sdk: '${{ parameters.customDotnetVersion }}'
 
@@ -225,7 +239,7 @@ stages:
         swaggerChanged: 0
 
       steps:
-        - template: 'install-custom-sdk.yml'
+        - template: 'step.install-custom-sdk.yml'
           parameters:
             sdk: '${{ parameters.customDotnetVersion }}'
 

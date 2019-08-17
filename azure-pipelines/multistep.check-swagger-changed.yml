@@ -1,5 +1,5 @@
 ###############################################################################################
-# check-swagger-changed-steps.yml
+# multistep.check-swagger-changed.yml
 ###############################################################################################
 
 # This set of steps checks the previous version of swagger.json (archived by the previous

@@ -1,5 +1,5 @@
 ###############################################################################################
-# create-nuget-package.yml
+# step.create-nuget-package.yml
 ###############################################################################################
 
 # this step generates the NuGet package for the given project
