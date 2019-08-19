@@ -32,23 +32,41 @@ steps:
         echo '##vso[task.setvariable variable=buildTime;]'$CURRENT_DATE_TIME
       displayName: 'Take current time'
 
-    - task: Assembly-Info-NetFramework@2
+    # - task: Assembly-Info-NetFramework@2
+    #   displayName: 'Version API'
+    #   inputs:
+    #     Configuration: '${{ parameters.buildConfiguration }}'
+    #     Path: '$(Build.SourcesDirectory)/src/${{ parameters.apiName }}'
+    #     FileNames: '**/AssemblyInfo.cs'
+    #     InsertAttributes: false
+    #     FileEncoding: 'auto'
+    #     WriteBOM: false
+    #     Title: '${{ parameters.apiDescription }}'
+    #     Product: '${{ parameters.productDescription }}'
+    #     Description: 'SemanticVersion=$(GitVersion.FullSemVer); Branch=$(Build.SourceBranch); Commit=$(GitVersion.ShortSha); BuildTime=$(buildTime); BuildConfig=${{ parameters.buildConfiguration }}'
+    #     Company: 'Adaptive Development'
+    #     Copyright: 'Ciprian Toader'
+    #     VersionNumber: '$(GitVersion.AssemblySemVer)'
+    #     FileVersionNumber: '$(GitVersion.AssemblySemFileVer)'
+    #     InformationalVersion: '$(GitVersion.InformationalVersion)'
+
+    - task: Assembly-Info-NetCore@2
       displayName: 'Version API'
       inputs:
-        Configuration: '${{ parameters.buildConfiguration }}'
         Path: '$(Build.SourcesDirectory)/src/${{ parameters.apiName }}'
-        FileNames: '**/AssemblyInfo.cs'
-        InsertAttributes: false
+        FileNames: '**/*.csproj'
+        InsertAttributes: true
         FileEncoding: 'auto'
         WriteBOM: false
-        Title: '${{ parameters.apiDescription }}'
+        GeneratePackageOnBuild: false
+        Authors: 'Ciprian Toader'
+        Company: 'Adaptive Development'
         Product: '${{ parameters.productDescription }}'
         Description: 'SemanticVersion=$(GitVersion.FullSemVer); Branch=$(Build.SourceBranch); Commit=$(GitVersion.ShortSha); BuildTime=$(buildTime); BuildConfig=${{ parameters.buildConfiguration }}'
-        Company: 'Adaptive Development'
-        Copyright: 'Ciprian Toader'
-        VersionNumber: '$(GitVersion.AssemblySemVer)'
+        VersionNumber: '$(GitVersion.FullSemVer)'
         FileVersionNumber: '$(GitVersion.AssemblySemFileVer)'
         InformationalVersion: '$(GitVersion.InformationalVersion)'
+        Copyright: 'Ciprian Toader'
 
     - bash: |
         export NUGET_VERSION="$(GitVersion.NuGetVersionV2)-$(GitVersion.BuildMetaData)"
