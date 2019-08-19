@@ -27,6 +27,11 @@ steps:
         cat $(Pipeline.Workspace)/variables/buildVersion
       displayName: 'Save buildVersion variable into a file'
 
+    - bash: |
+        export CURRENT_DATE_TIME=$(date --utc --iso-8601=seconds)
+        echo '##vso[task.setvariable variable=buildTime;]'$CURRENT_DATE_TIME
+      displayName: 'Take current time'
+
     - task: Assembly-Info-NetFramework@2
       displayName: 'Version API'
       inputs:
@@ -38,7 +43,7 @@ steps:
         WriteBOM: false
         Title: '${{ parameters.apiDescription }}'
         Product: '${{ parameters.productDescription }}'
-        Description: 'semanticVersion=$(GitVersion.FullSemVer); branch=$(Build.SourceBranch); commit=$(GitVersion.ShortSha)'
+        Description: 'SemanticVersion=$(GitVersion.FullSemVer); Branch=$(Build.SourceBranch); Commit=$(GitVersion.ShortSha); BuildTime=$(buildTime); BuildConfig=${{ parameters.buildConfiguration }}'
         Company: 'Adaptive Development'
         Copyright: 'Ciprian Toader'
         VersionNumber: '$(GitVersion.AssemblySemVer)'
