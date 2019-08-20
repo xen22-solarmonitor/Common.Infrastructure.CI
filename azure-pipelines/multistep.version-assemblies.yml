@@ -28,27 +28,9 @@ steps:
       displayName: 'Save buildVersion variable into a file'
 
     - bash: |
-        export CURRENT_DATE_TIME=$(date --utc --iso-8601=seconds)
+        export CURRENT_DATE_TIME=$(date --iso-8601=seconds)
         echo '##vso[task.setvariable variable=buildTime;]'$CURRENT_DATE_TIME
       displayName: 'Take current time'
-
-    # - task: Assembly-Info-NetFramework@2
-    #   displayName: 'Version API'
-    #   inputs:
-    #     Configuration: '${{ parameters.buildConfiguration }}'
-    #     Path: '$(Build.SourcesDirectory)/src/${{ parameters.apiName }}'
-    #     FileNames: '**/AssemblyInfo.cs'
-    #     InsertAttributes: false
-    #     FileEncoding: 'auto'
-    #     WriteBOM: false
-    #     Title: '${{ parameters.apiDescription }}'
-    #     Product: '${{ parameters.productDescription }}'
-    #     Description: 'SemanticVersion=$(GitVersion.FullSemVer); Branch=$(Build.SourceBranch); Commit=$(GitVersion.ShortSha); BuildTime=$(buildTime); BuildConfig=${{ parameters.buildConfiguration }}'
-    #     Company: 'Adaptive Development'
-    #     Copyright: 'Ciprian Toader'
-    #     VersionNumber: '$(GitVersion.AssemblySemVer)'
-    #     FileVersionNumber: '$(GitVersion.AssemblySemFileVer)'
-    #     InformationalVersion: '$(GitVersion.InformationalVersion)'
 
     - task: Assembly-Info-NetCore@2
       displayName: 'Version API'
@@ -62,7 +44,7 @@ steps:
         Authors: 'Ciprian Toader'
         Company: 'Adaptive Development'
         Product: '${{ parameters.productDescription }}'
-        Description: 'SemanticVersion=$(GitVersion.FullSemVer); Branch=$(Build.SourceBranch); Commit=$(GitVersion.ShortSha); BuildTime=$(buildTime); BuildConfig=${{ parameters.buildConfiguration }}'
+        Description: 'SemanticVersion=$(GitVersion.FullSemVer); Branch=$(Build.SourceBranch); Commit=$(GitVersion.Sha); BuildTime=$(buildTime); BuildConfig=${{ parameters.buildConfiguration }}'
         VersionNumber: '$(GitVersion.FullSemVer)'
         FileVersionNumber: '$(GitVersion.AssemblySemFileVer)'
         InformationalVersion: '$(GitVersion.InformationalVersion)'
