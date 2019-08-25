@@ -1,324 +1,355 @@
 parameters:
-  customDotnetVersion: ''
-  buildConfiguration: 'Release'
-  apiName: ''
+  customDotnetVersion: ""
+  buildConfiguration: "Release"
+  apiName: ""
   apiDescription: ""
   productDescription: ""
-  dockerContainerTag: ''
-  dockerId: ''
-
+  dockerContainerTag: ""
+  dockerId: ""
 
 stages:
+  #############################################################################################
+  # Stage: Build
+  #############################################################################################
 
-#############################################################################################        
-# Stage: Build
-#############################################################################################        
+  - stage: Build
 
-- stage: Build
+    jobs:
+      - job: Build
 
-  jobs:
+        pool:
+          vmImage: "ubuntu-latest"
 
-  - job: Build
+        variables:
+          swaggerChanged: 0
 
-    pool:
-      vmImage: 'ubuntu-latest'
+        steps:
+          ###############################################################################################
 
-    variables:
-      swaggerChanged: 0
+          - checkout: self
+            submodules: true
 
-    steps:
-    
-    ###############################################################################################
+          ###############################################################################################
 
-    - checkout: self
-      submodules: true
+          - template: "multistep.install-build-dependencies.yml"
+            parameters:
+              customDotnetVersion: "${{ parameters.customDotnetVersion }}"
 
-    ###############################################################################################
+          ###############################################################################################
 
-    - template: 'multistep.install-build-dependencies.yml'
-      parameters:
-        customDotnetVersion:  '${{ parameters.customDotnetVersion }}'
+          - template: "multistep.version-assemblies.yml"
+            parameters:
+              buildConfiguration: "${{ parameters.buildConfiguration }}"
+              apiName: "${{ parameters.apiName }}"
+              apiDescription: "${{ parameters.apiDescription }}"
+              productDescription: "${{ parameters.productDescription }}"
 
-    ###############################################################################################
+          ###############################################################################################
 
-    - template: 'multistep.version-assemblies.yml'
-      parameters:
-        buildConfiguration:   '${{ parameters.buildConfiguration }}'
-        apiName:              '${{ parameters.apiName }}'
-        apiDescription:       '${{ parameters.apiDescription }}'
-        productDescription:   '${{ parameters.productDescription }}'
+          - template: "multistep.pre-build-tasks.yml"
+            parameters:
+              apiName: "${{ parameters.apiName }}"
 
-    ###############################################################################################
+          ###############################################################################################
 
-    - template: 'multistep.pre-build-tasks.yml'
-      parameters:
-        apiName:              '${{ parameters.apiName }}'
+          - template: "multistep.build.yml"
+            parameters:
+              buildConfiguration: "${{ parameters.buildConfiguration }}"
+              apiName: "${{ parameters.apiName }}"
 
-    ###############################################################################################
+          ###############################################################################################
+
+          - template: "multistep.check-swagger-committed.yml"
+            parameters:
+              buildConfiguration: "${{ parameters.buildConfiguration }}"
+              apiName: "${{ parameters.apiName }}"
+
+          ###############################################################################################
+
+          - template: "multistep.check-swagger-changed.yml"
+            parameters:
+              buildConfiguration: "${{ parameters.buildConfiguration }}"
+              apiName: "${{ parameters.apiName }}"
+
+          ###############################################################################################
+
+          - template: "step.create-nuget-package.yml"
+            parameters:
+              buildConfiguration: "${{ parameters.buildConfiguration }}"
+              projectFile: "$(System.DefaultWorkingDirectory)/src/${{ parameters.apiName }}Proxy/*.csproj"
+
+          ###############################################################################################
+
+          - template: "multistep.archive-artifacts.yml"
+            parameters:
+              buildConfiguration: "${{ parameters.buildConfiguration }}"
+              apiName: "${{ parameters.apiName }}"
 
-    - template: 'multistep.build.yml'
-      parameters:
-        buildConfiguration:   '${{ parameters.buildConfiguration }}'
-        apiName:              '${{ parameters.apiName }}'
+    #############################################################################################
+    # Stage: Tests
+    #############################################################################################
+  - stage: Tests
+
+    jobs:
+      - job: UnitTests
 
-    ###############################################################################################
+        displayName: "Run unit tests"
+
+        pool:
+          vmImage: "ubuntu-latest"
+
+        steps:
+          # skip source code checkout since we've already built and archived it
+          - checkout: none
+
+          - download: current
+            artifact: BuiltSourceTree
+
+          - template: "step.install-custom-sdk.yml"
+            parameters:
+              sdk: "${{ parameters.customDotnetVersion }}"
 
-    - template: 'multistep.check-swagger-committed.yml'
-      parameters:
-        buildConfiguration:   '${{ parameters.buildConfiguration }}'
-        apiName:              '${{ parameters.apiName }}'
-
-    ###############################################################################################
-
-    - template: 'multistep.check-swagger-changed.yml'
-      parameters:
-        buildConfiguration:   '${{ parameters.buildConfiguration }}'
-        apiName:              '${{ parameters.apiName }}'
-
-    ###############################################################################################
-
-    - template: 'step.create-nuget-package.yml'
-      parameters:
-        buildConfiguration:   '${{ parameters.buildConfiguration }}'
-        projectFile:          '$(System.DefaultWorkingDirectory)/src/${{ parameters.apiName }}Proxy/*.csproj'
-
-    ###############################################################################################
-
-    - template: 'multistep.archive-artifacts.yml'
-      parameters:
-        buildConfiguration:   '${{ parameters.buildConfiguration }}'
-        apiName:              '${{ parameters.apiName }}'
-
-
-  #############################################################################################        
-  # Stage: Tests
-  #############################################################################################        
-
-- stage: Tests
-
-  jobs:
-
-    - job: UnitTests
-
-      displayName: 'Run unit tests'
-
-      pool:
-        vmImage: 'ubuntu-latest'
-      
-      steps:
-
-        # skip source code checkout since we've already built and archived it 
-        - checkout: none
-          
-        - download: current
-          artifact: BuiltSourceTree
-            
-        - template: 'step.install-custom-sdk.yml'
-          parameters:
-            sdk: '${{ parameters.customDotnetVersion }}'
-            
-        - task: DotNetCoreCLI@2
-          displayName: 'Run unit tests'
-          inputs:
-            command: 'test'
-            projects: '$(Pipeline.Workspace)/BuiltSourceTree/test/unit/${{ parameters.apiName }}UnitTests/${{ parameters.apiName }}UnitTests.csproj'
-            testRunTitle: 'Run unit tests'
-            publishTestResults: true
-            arguments: '--no-build --configuration ${{ parameters.buildConfiguration }}'
-
-        - bash: echo "Publish results..."
-        - bash: echo "Save coverage report..."
-
-    - job: IntegrationTests
-      dependsOn: []    # this removes the implicit dependency on previous job and causes this to run in parallel
-      displayName: 'Run integration tests'
-      pool:
-        vmImage: 'ubuntu-latest'
-      steps:
-
-        # skip source code checkout since we've already built and archived it 
-        - checkout: none
-
-        - download: current
-          artifact: BuiltSourceTree
-
-        - template: 'step.install-custom-sdk.yml'
-          parameters:
-            sdk: '${{ parameters.customDotnetVersion }}'
-
-        - task: DotNetCoreCLI@2
-          displayName: 'Run integration tests'
-          inputs:
-            command: 'test'
-            projects: '$(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests/${{ parameters.apiName }}IntegrationTests.csproj'
-            testRunTitle: 'Run integration tests'
-            publishTestResults: true
-            arguments: '--no-build --configuration ${{ parameters.buildConfiguration }}'
-  
-        - bash: echo "Publish results..."
-        - bash: echo "Save coverage report..."
-
-  #############################################################################################        
-  # Stage: Publish
-  #############################################################################################        
-
-- stage: Publish
-  jobs:
-    - job: DockerImageCreate
-
-      displayName: 'Publish API Docker image for the API'
-
-      pool:
-        vmImage: 'ubuntu-latest'
-
-      steps:
-        - checkout: none
-
-#        - download: current
-#          artifact: ApiBinaries
-#          
-#        - download: current
-#          artifact: Dockerfile
-          
-        - download: current
-          artifact: BuiltSourceTree 
-          
-        - bash: ls -lF $(Pipeline.Workspace)/BuiltSourceTree 
-        #ApiBinaries $(Pipeline.Workspace)/Dockerfile $(Pipeline.Workspace)/TestResults
-          
-        - download: current
-          displayName: 'Retrieve "variables" from pipeline archive'
-          artifact: variables
-
-        # Read the variable from the file under pipeline variables artifact, then expose it in the job
-        #- task: setvar@0
-        #- bash: cat $(Pipeline.Workspace)/variables/buildVersion | setvar -name buildVersion -isOutput
-        #  displayName: 'Retrieve buildVersion'
-        - bash: |
-            ls -la $(Pipeline.Workspace)/variables
-            cat $(Pipeline.Workspace)/variables/buildVersion
-            export BUILD_VERSION=`cat $(Pipeline.Workspace)/variables/buildVersion`
-            echo buildVer is $BUILD_VERSION
-            echo '##vso[task.setvariable variable=buildVersion;]'$BUILD_VERSION
-          displayName: 'Retrieve buildVersion'
-          
-        - bash: echo Retrieved buildVersion $(buildVersion)
-          displayName: 'Log buildVersion $(buildVersion)'
-
-
-        - task: Docker@2
-          displayName: 'Login to DockerHub'
-          inputs:
-            command: 'login'
-            containerRegistry: 'DockerHub connection (xen22)'
-
-        - task: Docker@2
-          displayName: 'Create Docker image'
-          inputs:
-            command: 'build'
-            Dockerfile: '$(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}/Dockerfile'
-            tags: '$(buildVersion)'
-            repository: '${{ parameters.dockerId }}/${{ parameters.dockerContainerTag }}'
-            
-        #- script: docker build -f $(Pipeline.Workspace)/BuiltSourceTree/src/Api.Core.SolarMeasurements/Dockerfile -t ${{ parameters.dockerId }}/api.core.solarmeasurements:$(version)-$(Build.BuildId) .  # add options to this command to meet your needs
-
-        - task: Docker@2
-          displayName: 'Push Docker image'
-          inputs:
-            command: 'push'
-            Dockerfile: '$(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}/Dockerfile'
-            tags: '$(buildVersion)'
-            repository: '${{ parameters.dockerId }}/${{ parameters.dockerContainerTag }}'
-
-    - job: CreateApiProxy
-      displayName: 'Create and publish API Proxy to NuGet repo'
-      pool:
-        vmImage: 'ubuntu-latest'
-
-      variables:
-        swaggerChanged: 0
-
-      steps:
-        - template: 'step.install-custom-sdk.yml'
-          parameters:
-            sdk: '${{ parameters.customDotnetVersion }}'
-
-        - download: current
-          artifact: BuiltSourceTree
-
-          ### TODO: replace this with custom step
-
-        - download: current
-          displayName: 'Retrieve "variables" from pipeline archive'
-          artifact: variables
-
-        - bash: |
-            ls -la $(Pipeline.Workspace)/variables
-            cat $(Pipeline.Workspace)/variables/swaggerChanged
-            export SWAGGER_CHANGED=`cat $(Pipeline.Workspace)/variables/swaggerChanged`
-            echo buildVer is $SWAGGER_CHANGED
-            echo '##vso[task.setvariable variable=swaggerChanged;]'$SWAGGER_CHANGED
-          displayName: 'Retrieve swaggerChanged'
-          
-        - bash: echo Retrieved swaggerChanged $(swaggerChanged)
-          displayName: 'Log swaggerChanged $(swaggerChanged)'
-
-        ###
-
-
-
-        # - task: DownloadPipelineArtifact@2
-        #   displayName: 'Retrieve swagger.json from previous build'
-        #   inputs:
-        #     artifact: 'swagger'
-        #     path: '$(Pipeline.Workspace)'
-        #     source: 'specific'
-        #     pipeline: '$(System.DefinitionId)'
-        #     project: '$(System.TeamProjectId)'
-        #     runVersion: 'latestFromBranch'
-        #     runBranch: '$(Build.SourceBranch)'
-
-        # - bash: 'echo +++ swaggerChanged variable before being set: $(swaggerChanged)'
-            
-        # - bash: |
-        #     ls -la $(Pipeline.Workspace)/swagger*.json
-        #     SWAGGER_OUTPUT=$(cmp $(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}Proxy/AutoGeneratedSwaggerDefinition/swagger.json $(Pipeline.Workspace)/swagger*.json)
-        #     export SWAGGER_CMP_EXIT_CODE=$?
-        #     echo SWAGGER_CMP_EXIT_CODE=$SWAGGER_CMP_EXIT_CODE
-        #     echo '##vso[task.setvariable variable=swaggerChanged;]'$SWAGGER_CMP_EXIT_CODE
-        #   condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
-        #   displayName: 'Creating Azure pipelines variable swaggerChanged'
-
-        # - bash: 'echo +++ swaggerChanged variable after being set: $(swaggerChanged)'
-
-        - download: current 
-          displayName: 'Download Nuget packages'
-          condition: ne(variables['swaggerChanged'], '0')
-          artifact: ProxyNugetPackages
-
-        - task: NuGetToolInstaller@1
-          displayName: 'Install NuGet v. 4.9.0 or newer (which supports symbol packages)'
-          inputs:
-            versionSpec: '>=4.9.0'
-            
-        - task: NuGetCommand@2
-          displayName: 'Publish Proxy Client Nuget package'
-          condition: ne(variables['swaggerChanged'], '0')
-          inputs:
-            command: 'push'
-            packagesToPush: '$(Pipeline.Workspace)/ProxyNugetPackages/*.nupkg;!$(Pipeline.Workspace)/ProxyNugetPackages/*.snupkg'
-            nuGetFeedType: 'external'
-            publishFeedCredentials: 'Nuget.org service connection'
-            allowPackageConflicts: true
-
-        # Note: this appears to be pushed automatically with the nupkg above
-        # - task: NuGetCommand@2
-        #   displayName: 'Publish Proxy Client Nuget symbol package'
-        #   condition: ne(variables['swaggerChanged'], '0')
-        #   inputs:
-        #     command: 'push'
-        #     packagesToPush: '$(Pipeline.Workspace)/ProxyNugetPackages/*.snupkg'
-        #     nuGetFeedType: 'external'
-        #     publishFeedCredentials: 'Nuget.org service connection'
-        #     allowPackageConflicts: true
-
+          - task: DotNetCoreCLI@2
+            displayName: "Run unit tests"
+            inputs:
+              command: "test"
+              projects: "$(Pipeline.Workspace)/BuiltSourceTree/test/unit/${{ parameters.apiName }}UnitTests/${{ parameters.apiName }}UnitTests.csproj"
+              testRunTitle: "Run unit tests"
+              publishTestResults: true
+              arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -l:trx;LogFileName=$(Pipeline.Workspace)/TestResults/test_results_unit.trx -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_unit.xml"
+
+          - publish: $(Pipeline.Workspace)/TestResults
+            displayName: "Archive Unit Test results"
+            artifact: UnitTestResults
+
+          - bash: echo "Publish results..."
+          - bash: echo "Save coverage report..."
+
+      - job: IntegrationTests
+        dependsOn: [] # this removes the implicit dependency on previous job and causes this to run in parallel
+        displayName: "Run integration tests"
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          # skip source code checkout since we've already built and archived it
+          - checkout: none
+
+          - download: current
+            artifact: BuiltSourceTree
+
+          - template: "step.install-custom-sdk.yml"
+            parameters:
+              sdk: "${{ parameters.customDotnetVersion }}"
+
+          - task: DotNetCoreCLI@2
+            displayName: "Run integration tests"
+            inputs:
+              command: "test"
+              projects: "$(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests/${{ parameters.apiName }}IntegrationTests.csproj"
+              testRunTitle: "Run integration tests"
+              publishTestResults: true
+              arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -l:trx;LogFileName=$(Pipeline.Workspace)/TestResults/test_results_integration.trx -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_integration.xml"
+
+          # - task: PublishTestResults@2
+          #   inputs:
+          #     testResultsFormat: "xUnit" # Options: JUnit, NUnit, VSTest, xUnit, cTest
+          #     testResultsFiles: "**/TEST-*.trx"
+          #     #searchFolder: '$(System.DefaultWorkingDirectory)' # Optional
+          #     #mergeTestResults: false # Optional
+          #     #failTaskOnFailedTests: false # Optional
+          #     testRunTitle: "Run integration tests"
+          #     #buildPlatform: # Optional
+          #     #buildConfiguration: # Optional
+          #     #publishRunAttachments: true # Optional
+
+          - publish: $(Pipeline.Workspace)/TestResults
+            displayName: "Archive Unit Test results"
+            artifact: IntegrationTestResults
+
+          - bash: echo "Publish results..."
+          - bash: echo "Save coverage report..."
+
+    #############################################################################################
+    # Stage: Publish Test Results
+    #############################################################################################
+  - stage: Publish Test Results
+    jobs:
+      - job: PublishTestResults
+
+        displayName: "Collate and publish test coverage results"
+
+        pool:
+          vmImage: "ubuntu-latest"
+
+        steps:
+          - checkout: none
+
+          - download: current
+            artifact: UnitTestResults
+
+          - download: current
+            artifact: IntegrationTestResults
+
+          - task: PublishCodeCoverageResults@1
+            displayName: "Publish unit and integration test coverage results"
+            inputs:
+              codeCoverageTool: "Cobertura"
+              summaryFileLocation: "$(Pipeline.Workspace)/**/TestResults/coverage*.xml"
+
+    #############################################################################################
+    # Stage: Publish
+    #############################################################################################
+  - stage: Publish
+    jobs:
+      - job: DockerImageCreate
+
+        displayName: "Publish API Docker image for the API"
+
+        pool:
+          vmImage: "ubuntu-latest"
+
+        steps:
+          - checkout: none
+
+          #        - download: current
+          #          artifact: ApiBinaries
+          #
+          #        - download: current
+          #          artifact: Dockerfile
+
+          - download: current
+            artifact: BuiltSourceTree
+
+          - bash: ls -lF $(Pipeline.Workspace)/BuiltSourceTree
+          #ApiBinaries $(Pipeline.Workspace)/Dockerfile $(Pipeline.Workspace)/TestResults
+
+          - download: current
+            displayName: 'Retrieve "variables" from pipeline archive'
+            artifact: variables
+
+          # Read the variable from the file under pipeline variables artifact, then expose it in the job
+          #- task: setvar@0
+          #- bash: cat $(Pipeline.Workspace)/variables/buildVersion | setvar -name buildVersion -isOutput
+          #  displayName: 'Retrieve buildVersion'
+          - bash: |
+              ls -la $(Pipeline.Workspace)/variables
+              cat $(Pipeline.Workspace)/variables/buildVersion
+              export BUILD_VERSION=`cat $(Pipeline.Workspace)/variables/buildVersion`
+              echo buildVer is $BUILD_VERSION
+              echo '##vso[task.setvariable variable=buildVersion;]'$BUILD_VERSION
+            displayName: "Retrieve buildVersion"
+
+          - bash: echo Retrieved buildVersion $(buildVersion)
+            displayName: "Log buildVersion $(buildVersion)"
+
+          - task: Docker@2
+            displayName: "Login to DockerHub"
+            inputs:
+              command: "login"
+              containerRegistry: "DockerHub connection (xen22)"
+
+          - task: Docker@2
+            displayName: "Create Docker image"
+            inputs:
+              command: "build"
+              Dockerfile: "$(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}/Dockerfile"
+              tags: "$(buildVersion)"
+              repository: "${{ parameters.dockerId }}/${{ parameters.dockerContainerTag }}"
+
+          #- script: docker build -f $(Pipeline.Workspace)/BuiltSourceTree/src/Api.Core.SolarMeasurements/Dockerfile -t ${{ parameters.dockerId }}/api.core.solarmeasurements:$(version)-$(Build.BuildId) .  # add options to this command to meet your needs
+
+          - task: Docker@2
+            displayName: "Push Docker image"
+            inputs:
+              command: "push"
+              Dockerfile: "$(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}/Dockerfile"
+              tags: "$(buildVersion)"
+              repository: "${{ parameters.dockerId }}/${{ parameters.dockerContainerTag }}"
+
+      - job: CreateApiProxy
+        displayName: "Create and publish API Proxy to NuGet repo"
+        pool:
+          vmImage: "ubuntu-latest"
+
+        variables:
+          swaggerChanged: 0
+
+        steps:
+          - template: "step.install-custom-sdk.yml"
+            parameters:
+              sdk: "${{ parameters.customDotnetVersion }}"
+
+          - download: current
+            artifact: BuiltSourceTree
+
+            ### TODO: replace this with custom step
+          - download: current
+            displayName: 'Retrieve "variables" from pipeline archive'
+            artifact: variables
+
+          - bash: |
+              ls -la $(Pipeline.Workspace)/variables
+              cat $(Pipeline.Workspace)/variables/swaggerChanged
+              export SWAGGER_CHANGED=`cat $(Pipeline.Workspace)/variables/swaggerChanged`
+              echo buildVer is $SWAGGER_CHANGED
+              echo '##vso[task.setvariable variable=swaggerChanged;]'$SWAGGER_CHANGED
+            displayName: "Retrieve swaggerChanged"
+
+          - bash: echo Retrieved swaggerChanged $(swaggerChanged)
+            displayName: "Log swaggerChanged $(swaggerChanged)"
+
+          ###
+
+          # - task: DownloadPipelineArtifact@2
+          #   displayName: 'Retrieve swagger.json from previous build'
+          #   inputs:
+          #     artifact: 'swagger'
+          #     path: '$(Pipeline.Workspace)'
+          #     source: 'specific'
+          #     pipeline: '$(System.DefinitionId)'
+          #     project: '$(System.TeamProjectId)'
+          #     runVersion: 'latestFromBranch'
+          #     runBranch: '$(Build.SourceBranch)'
+
+          # - bash: 'echo +++ swaggerChanged variable before being set: $(swaggerChanged)'
+
+          # - bash: |
+          #     ls -la $(Pipeline.Workspace)/swagger*.json
+          #     SWAGGER_OUTPUT=$(cmp $(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}Proxy/AutoGeneratedSwaggerDefinition/swagger.json $(Pipeline.Workspace)/swagger*.json)
+          #     export SWAGGER_CMP_EXIT_CODE=$?
+          #     echo SWAGGER_CMP_EXIT_CODE=$SWAGGER_CMP_EXIT_CODE
+          #     echo '##vso[task.setvariable variable=swaggerChanged;]'$SWAGGER_CMP_EXIT_CODE
+          #   condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+          #   displayName: 'Creating Azure pipelines variable swaggerChanged'
+
+          # - bash: 'echo +++ swaggerChanged variable after being set: $(swaggerChanged)'
+
+          - download: current
+            displayName: "Download Nuget packages"
+            condition: ne(variables['swaggerChanged'], '0')
+            artifact: ProxyNugetPackages
+
+          - task: NuGetToolInstaller@1
+            displayName: "Install NuGet v. 4.9.0 or newer (which supports symbol packages)"
+            inputs:
+              versionSpec: ">=4.9.0"
+
+          - task: NuGetCommand@2
+            displayName: "Publish Proxy Client Nuget package"
+            condition: ne(variables['swaggerChanged'], '0')
+            inputs:
+              command: "push"
+              packagesToPush: "$(Pipeline.Workspace)/ProxyNugetPackages/*.nupkg;!$(Pipeline.Workspace)/ProxyNugetPackages/*.snupkg"
+              nuGetFeedType: "external"
+              publishFeedCredentials: "Nuget.org service connection"
+              allowPackageConflicts: true
+          # Note: this appears to be pushed automatically with the nupkg above
+          # - task: NuGetCommand@2
+          #   displayName: 'Publish Proxy Client Nuget symbol package'
+          #   condition: ne(variables['swaggerChanged'], '0')
+          #   inputs:
+          #     command: 'push'
+          #     packagesToPush: '$(Pipeline.Workspace)/ProxyNugetPackages/*.snupkg'
+          #     nuGetFeedType: 'external'
+          #     publishFeedCredentials: 'Nuget.org service connection'
+          #     allowPackageConflicts: true
