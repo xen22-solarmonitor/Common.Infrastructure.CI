@@ -172,7 +172,7 @@ stages:
     #############################################################################################
     # Stage: Publish Test Results
     #############################################################################################
-  - stage: Publish Test Results
+  - stage: PublishTestResults
     jobs:
       - job: PublishTestResults
 
