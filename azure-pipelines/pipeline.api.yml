@@ -161,6 +161,11 @@ stages:
             parameters:
               sdk: "${{ parameters.customDotnetVersion }}"
 
+          - bash: |
+              cd $(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests
+              dotnet test --no-build --configuration ${{ parameters.buildConfiguration }}
+            displayName: "Checking that we can run dotnet test"
+
           - task: DotNetCoreCLI@2
             displayName: "Run integration tests"
             inputs:
