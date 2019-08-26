@@ -7,6 +7,9 @@ parameters:
   dockerContainerTag: ""
   dockerId: ""
 
+variables:
+  NUGET_PACKAGES: $(Pipeline.Workspace)/.nuget/packages
+
 stages:
   #############################################################################################
   # Stage: Build
@@ -136,6 +139,16 @@ stages:
 
           - download: current
             artifact: BuiltSourceTree
+
+          - download: current
+            artifact: NuGetCache
+
+          - bash: |
+              ls -la $(Pipeline.Workspace)/NuGetCache
+              ls -la $(Pipeline.Workspace)
+              ln -s $(Pipeline.Workspace)/NuGetCache/.nuget $(Pipeline.Workspace)/.nuget
+              ls -la $(Pipeline.Workspace)
+            displayName: "Link to correct nuget location"
 
           - template: "step.install-custom-sdk.yml"
             parameters:
