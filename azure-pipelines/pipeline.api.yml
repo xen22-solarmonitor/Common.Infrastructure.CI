@@ -153,7 +153,8 @@ stages:
           - bash: |
               ls -la $(Pipeline.Workspace)/NuGetCache
               ls -la $(Pipeline.Workspace)
-              ln -s $(Pipeline.Workspace)/NuGetCache $(Pipeline.Workspace)/.nuget
+              mkdir $(Pipeline.Workspace)/.nuget
+              ln -s $(Pipeline.Workspace)/NuGetCache $(Pipeline.Workspace)/.nuget/packages
               ls -la $(Pipeline.Workspace)
             displayName: "Link to correct nuget location"
 
@@ -162,6 +163,7 @@ stages:
               sdk: "${{ parameters.customDotnetVersion }}"
 
           - bash: |
+              echo $(NUGET_PACKAGES)
               cd $(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests
               dotnet test --no-build --configuration ${{ parameters.buildConfiguration }}
             displayName: "Checking that we can run dotnet test"
