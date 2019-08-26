@@ -7,9 +7,6 @@ parameters:
   dockerContainerTag: ""
   dockerId: ""
 
-variables:
-  NUGET_PACKAGES: $(Pipeline.Workspace)/.nuget/packages
-
 stages:
   #############################################################################################
   # Stage: Build
