@@ -105,6 +105,16 @@ stages:
           - download: current
             artifact: BuiltSourceTree
 
+          - download: current
+            artifact: NuGetCache
+
+          - bash: |
+              ls -la $(Pipeline.Workspace)/NuGetCache
+              ls -la $(Pipeline.Workspace)
+              ln -s $(Pipeline.Workspace)/NuGetCache $(Pipeline.Workspace)/.nuget
+              ls -la $(Pipeline.Workspace)
+            displayName: "Link to correct nuget location"
+
           - template: "step.install-custom-sdk.yml"
             parameters:
               sdk: "${{ parameters.customDotnetVersion }}"
@@ -143,7 +153,7 @@ stages:
           - bash: |
               ls -la $(Pipeline.Workspace)/NuGetCache
               ls -la $(Pipeline.Workspace)
-              ln -s $(Pipeline.Workspace)/NuGetCache/.nuget $(Pipeline.Workspace)/.nuget
+              ln -s $(Pipeline.Workspace)/NuGetCache $(Pipeline.Workspace)/.nuget
               ls -la $(Pipeline.Workspace)
             displayName: "Link to correct nuget location"
 
