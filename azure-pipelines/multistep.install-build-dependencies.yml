@@ -9,19 +9,22 @@
 #  needed by some utilities such as swagger dotnet CLI generation tool)
 
 parameters:
-  customDotnetVersion : ''
+  customDotnetVersion: ""
 
 steps:
   # this is installed by default on the Azure Ubuntu build agent
   #- bash: sudo apt-get install jq
   # displayName: 'Installing build dependency: jq'
 
-  - template: 'step.install-custom-sdk.yml'
+  - bash: sudo apt-get install tree
+    displayName: "Installing various utilities from Ubuntu apt repo"
+
+  - template: "step.install-custom-sdk.yml"
     parameters:
-      sdk: '${{ parameters.customDotnetVersion }}'
+      sdk: "${{ parameters.customDotnetVersion }}"
 
   # create links to .NET Core Runtimes from v. 2.2 because it is needed by 'dotnet swagger' CLI
   - bash: ln -s /usr/share/dotnet/shared/Microsoft.NETCore.App/2.2.?/ $(dirname `which dotnet`)/shared/Microsoft.NETCore.App
-    displayName: 'Create link to NETCoreApp 2.2 runtime (for dotnet CLI 3.0)'
+    displayName: "Create link to NETCoreApp 2.2 runtime (for dotnet CLI 3.0)"
   - bash: ln -s /usr/share/dotnet/shared/Microsoft.AspNetCore.App/2.2.?/ $(dirname `which dotnet`)/shared/Microsoft.AspNetCore.App
-    displayName: 'Create link to AspNetCore 2.2 runtime (for dotnet CLI 3.0)'
+    displayName: "Create link to AspNetCore 2.2 runtime (for dotnet CLI 3.0)"

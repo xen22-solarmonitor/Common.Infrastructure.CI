@@ -163,7 +163,13 @@ stages:
               sdk: "${{ parameters.customDotnetVersion }}"
 
           - bash: |
+              set -v
               echo $(NUGET_PACKAGES)
+              echo "-----------------------"
+              ls -la $(NUGET_PACKAGES)
+              echo "-----------------------"
+              tree $(Pipeline.Workspace) 
+              echo "-----------------------"
               cd $(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests
               dotnet test --no-build --configuration ${{ parameters.buildConfiguration }}
             displayName: "Checking that we can run dotnet test"
