@@ -16,8 +16,8 @@ steps:
   #- bash: sudo apt-get install jq
   # displayName: 'Installing build dependency: jq'
 
-  - bash: sudo apt-get install tree
-    displayName: "Installing various utilities from Ubuntu apt repo"
+  # - bash: sudo apt-get install tree
+  #   displayName: "Installing various utilities from Ubuntu apt repo"
 
   - template: "step.install-custom-sdk.yml"
     parameters:
