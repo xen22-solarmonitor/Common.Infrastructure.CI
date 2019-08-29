@@ -116,6 +116,12 @@ stages:
               ls -la $(Pipeline.Workspace)
             displayName: "Link to correct nuget location"
 
+          - bash: |
+              mkdir -p $(Pipeline.Workspace)/s/src/
+              ln -s $(Pipeline.Workspace)/BuiltSourceTree/ $(Pipeline.Workspace)/s/src/Api.Core.SolarMeasurements
+              ls -la $(Pipeline.Workspace)/s/src/Api.Core.SolarMeasurements
+            displayName: "Setting up old source path as a link to BuiltSourceTree"
+
           ###############################################################################################
 
           - template: "multistep.install-build-dependencies.yml"
@@ -167,6 +173,12 @@ stages:
               ln -s $(Pipeline.Workspace)/NuGetCache $(Pipeline.Workspace)/.nuget/packages
               ls -la $(Pipeline.Workspace)
             displayName: "Link to correct nuget location"
+
+          - bash: |
+              mkdir -p $(Pipeline.Workspace)/s/src/
+              ln -s $(Pipeline.Workspace)/BuiltSourceTree/ $(Pipeline.Workspace)/s/src/Api.Core.SolarMeasurements
+              ls -la $(Pipeline.Workspace)/s/src/Api.Core.SolarMeasurements
+            displayName: "Setting up old source path as a link to BuiltSourceTree"
 
           ###############################################################################################
 
