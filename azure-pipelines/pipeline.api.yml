@@ -111,7 +111,8 @@ stages:
           - bash: |
               ls -la $(Pipeline.Workspace)/NuGetCache
               ls -la $(Pipeline.Workspace)
-              ln -s $(Pipeline.Workspace)/NuGetCache $(Pipeline.Workspace)/.nuget
+              mkdir $(Pipeline.Workspace)/.nuget
+              ln -s $(Pipeline.Workspace)/NuGetCache $(Pipeline.Workspace)/.nuget/packages
               ls -la $(Pipeline.Workspace)
             displayName: "Link to correct nuget location"
 
@@ -130,7 +131,7 @@ stages:
               projects: "$(Pipeline.Workspace)/BuiltSourceTree/test/unit/${{ parameters.apiName }}UnitTests/${{ parameters.apiName }}UnitTests.csproj"
               testRunTitle: "Run unit tests"
               publishTestResults: true
-              arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -l:trx;LogFileName=$(Pipeline.Workspace)/TestResults/test_results_unit.trx -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_unit.xml"
+              arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_unit.xml"
 
           - publish: $(Pipeline.Workspace)/TestResults
             displayName: "Archive Unit Test results"
@@ -162,9 +163,13 @@ stages:
               ls -la $(Pipeline.Workspace)
             displayName: "Link to correct nuget location"
 
-          - template: "step.install-custom-sdk.yml"
+          ###############################################################################################
+
+          - template: "multistep.install-build-dependencies.yml"
             parameters:
-              sdk: "${{ parameters.customDotnetVersion }}"
+              customDotnetVersion: "${{ parameters.customDotnetVersion }}"
+
+          ###############################################################################################
 
           - bash: |
               set -v
