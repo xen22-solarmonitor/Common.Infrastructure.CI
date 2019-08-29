@@ -129,15 +129,21 @@ stages:
             inputs:
               command: "test"
               projects: "$(Pipeline.Workspace)/BuiltSourceTree/test/unit/${{ parameters.apiName }}UnitTests/${{ parameters.apiName }}UnitTests.csproj"
+              nobuild: true
               testRunTitle: "Run unit tests"
               publishTestResults: true
-              arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_unit.xml"
+              arguments: "--configuration ${{ parameters.buildConfiguration }} -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_unit.xml"
 
           - publish: $(Pipeline.Workspace)/TestResults
             displayName: "Archive Unit Test results"
             artifact: UnitTestResults
 
-          - bash: echo "Publish results..."
+          - bash: |
+              echo "Check results..."
+              ls -la $(Pipeline.Workspace)/TestResults
+              cat $(Pipeline.Workspace)/TestResults/*xml
+            displayName: "testing"
+
           - bash: echo "Save coverage report..."
 
       - job: IntegrationTests
@@ -186,12 +192,13 @@ stages:
           - task: DotNetCoreCLI@2
             displayName: "Run integration tests"
             inputs:
-              command: "test"
+              command: test
               projects: "$(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests/${{ parameters.apiName }}IntegrationTests.csproj"
+              nobuild: true
               testRunTitle: "Run integration tests"
               publishTestResults: true
               #arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -l:trx;LogFileName=$(Pipeline.Workspace)/TestResults/test_results_integration.trx -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_integration.xml"
-              arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_integration.xml"
+              arguments: "--configuration ${{ parameters.buildConfiguration }} -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_integration.xml"
 
           # - task: PublishTestResults@2
           #   inputs:
@@ -209,7 +216,12 @@ stages:
             displayName: "Archive Integration Test results"
             artifact: IntegrationTestResults
 
-          - bash: echo "Publish results..."
+          - bash: |
+              echo "Check results..."
+              ls -la $(Pipeline.Workspace)/TestResults
+              cat $(Pipeline.Workspace)/TestResults/*xml
+            displayName: "testing"
+
           - bash: echo "Save coverage report..."
 
     #############################################################################################
@@ -233,11 +245,18 @@ stages:
           - download: current
             artifact: IntegrationTestResults
 
+          - bash: |
+              dotnet tool install -g dotnet-reportgenerator-globaltool
+              reportgenerator -reports:$(Pipeline.Workspace)/**/coverage_*.xml -targetdir:$(Pipeline.Workspace)/CodeCoverage -reporttypes:HtmlInline_AzurePipelines;Cobertura
+            displayName: Create Code coverage report
+
           - task: PublishCodeCoverageResults@1
             displayName: "Publish unit and integration test coverage results"
+
             inputs:
-              codeCoverageTool: "Cobertura"
-              summaryFileLocation: "$(Pipeline.Workspace)/**/TestResults/coverage*.xml"
+              codeCoverageTool: Cobertura
+              summaryFileLocation: "$(Pipeline.Workspace)/CodeCoverage/Cobertura.xml"
+              reportDirectory: "$(Pipeline.Workspace)/CodeCoverage"
 
     #############################################################################################
     # Stage: Publish
