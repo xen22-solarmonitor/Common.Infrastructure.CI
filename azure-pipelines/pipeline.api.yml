@@ -185,7 +185,8 @@ stages:
               projects: "$(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests/${{ parameters.apiName }}IntegrationTests.csproj"
               testRunTitle: "Run integration tests"
               publishTestResults: true
-              arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -l:trx;LogFileName=$(Pipeline.Workspace)/TestResults/test_results_integration.trx -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_integration.xml"
+              #arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -l:trx;LogFileName=$(Pipeline.Workspace)/TestResults/test_results_integration.trx -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_integration.xml"
+              arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_integration.xml"
 
           # - task: PublishTestResults@2
           #   inputs:
@@ -200,7 +201,7 @@ stages:
           #     #publishRunAttachments: true # Optional
 
           - publish: $(Pipeline.Workspace)/TestResults
-            displayName: "Archive Unit Test results"
+            displayName: "Archive Integration Test results"
             artifact: IntegrationTestResults
 
           - bash: echo "Publish results..."
