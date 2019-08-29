@@ -115,9 +115,13 @@ stages:
               ls -la $(Pipeline.Workspace)
             displayName: "Link to correct nuget location"
 
-          - template: "step.install-custom-sdk.yml"
+          ###############################################################################################
+
+          - template: "multistep.install-build-dependencies.yml"
             parameters:
-              sdk: "${{ parameters.customDotnetVersion }}"
+              customDotnetVersion: "${{ parameters.customDotnetVersion }}"
+
+          ###############################################################################################
 
           - task: DotNetCoreCLI@2
             displayName: "Run unit tests"
