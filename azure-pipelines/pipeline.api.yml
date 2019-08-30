@@ -99,28 +99,14 @@ stages:
           vmImage: "ubuntu-latest"
 
         steps:
+          ###############################################################################################
+
           # skip source code checkout since we've already built and archived it
           - checkout: none
 
-          - download: current
-            artifact: BuiltSourceTree
+          ###############################################################################################
 
-          - download: current
-            artifact: NuGetCache
-
-          - bash: |
-              ls -la $(Pipeline.Workspace)/NuGetCache
-              ls -la $(Pipeline.Workspace)
-              mkdir $(Pipeline.Workspace)/.nuget
-              ln -s $(Pipeline.Workspace)/NuGetCache $(Pipeline.Workspace)/.nuget/packages
-              ls -la $(Pipeline.Workspace)
-            displayName: "Link to correct nuget location"
-
-          - bash: |
-              mkdir -p $(Pipeline.Workspace)/s/src/
-              ln -s $(Pipeline.Workspace)/BuiltSourceTree/ $(Pipeline.Workspace)/s/src/Api.Core.SolarMeasurements
-              ls -la $(Pipeline.Workspace)/s/src/Api.Core.SolarMeasurements
-            displayName: "Setting up old source path as a link to BuiltSourceTree"
+          - template: "multistep.download-test-artifacts.yml"
 
           ###############################################################################################
 
@@ -130,26 +116,31 @@ stages:
 
           ###############################################################################################
 
-          - task: DotNetCoreCLI@2
-            displayName: "Run unit tests"
-            inputs:
-              command: "test"
-              projects: "$(Pipeline.Workspace)/BuiltSourceTree/test/unit/${{ parameters.apiName }}UnitTests/${{ parameters.apiName }}UnitTests.csproj"
-              testRunTitle: "Run unit tests"
-              publishTestResults: true
-              arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_unit.xml"
+          - template: "step.run-tests.yml"
+            parameters:
+              apiName: "${{ parameters.apiName }}"
+              projectPath: "$(Pipeline.Workspace)/BuiltSourceTree/test/unit/${{ parameters.apiName }}UnitTests/${{ parameters.apiName }}UnitTests.csproj"
+              title: "Run unit tests"
+              buildConfiguration: "${{ parameters.buildConfiguration }}"
+
+          ###############################################################################################
+
+          # - task: DotNetCoreCLI@2
+          #   displayName: "Run unit tests"
+          #   inputs:
+          #     command: "test"
+          #     projects: "$(Pipeline.Workspace)/BuiltSourceTree/test/unit/${{ parameters.apiName }}UnitTests/${{ parameters.apiName }}UnitTests.csproj"
+          #     testRunTitle: "Run unit tests"
+          #     publishTestResults: true
+          #     arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_unit.xml"
+
+          ###############################################################################################
 
           - publish: $(Pipeline.Workspace)/TestResults
             displayName: "Archive Unit Test results"
             artifact: UnitTestResults
 
-          - bash: |
-              echo "Check results..."
-              ls -la $(Pipeline.Workspace)/TestResults
-              cat $(Pipeline.Workspace)/TestResults/*xml
-            displayName: "testing"
-
-          - bash: echo "Save coverage report..."
+          ###############################################################################################
 
       - job: IntegrationTests
         dependsOn: [] # this removes the implicit dependency on previous job and causes this to run in parallel
@@ -157,28 +148,14 @@ stages:
         pool:
           vmImage: "ubuntu-latest"
         steps:
+          ###############################################################################################
+
           # skip source code checkout since we've already built and archived it
           - checkout: none
 
-          - download: current
-            artifact: BuiltSourceTree
+          ###############################################################################################
 
-          - download: current
-            artifact: NuGetCache
-
-          - bash: |
-              ls -la $(Pipeline.Workspace)/NuGetCache
-              ls -la $(Pipeline.Workspace)
-              mkdir $(Pipeline.Workspace)/.nuget
-              ln -s $(Pipeline.Workspace)/NuGetCache $(Pipeline.Workspace)/.nuget/packages
-              ls -la $(Pipeline.Workspace)
-            displayName: "Link to correct nuget location"
-
-          - bash: |
-              mkdir -p $(Pipeline.Workspace)/s/src/
-              ln -s $(Pipeline.Workspace)/BuiltSourceTree/ $(Pipeline.Workspace)/s/src/Api.Core.SolarMeasurements
-              ls -la $(Pipeline.Workspace)/s/src/Api.Core.SolarMeasurements
-            displayName: "Setting up old source path as a link to BuiltSourceTree"
+          - template: "multistep.download-test-artifacts.yml"
 
           ###############################################################################################
 
@@ -188,27 +165,36 @@ stages:
 
           ###############################################################################################
 
-          - bash: |
-              set -v
-              echo $(NUGET_PACKAGES)
-              echo "-----------------------"
-              ls -la $(NUGET_PACKAGES)
-              echo "-----------------------"
-              tree $(Pipeline.Workspace) 
-              echo "-----------------------"
-              cd $(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests
-              dotnet test --no-build --configuration ${{ parameters.buildConfiguration }}
-            displayName: "Checking that we can run dotnet test"
+          - template: "step.run-tests.yml"
+            parameters:
+              apiName: "${{ parameters.apiName }}"
+              projectPath: "$(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests/${{ parameters.apiName }}IntegrationTests.csproj"
+              title: "Run integration tests"
+              buildConfiguration: "${{ parameters.buildConfiguration }}"
 
-          - task: DotNetCoreCLI@2
-            displayName: "Run integration tests"
-            inputs:
-              command: test
-              projects: "$(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests/${{ parameters.apiName }}IntegrationTests.csproj"
-              testRunTitle: "Run integration tests"
-              publishTestResults: true
-              #arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -l:trx;LogFileName=$(Pipeline.Workspace)/TestResults/test_results_integration.trx -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_integration.xml"
-              arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_integration.xml"
+          ###############################################################################################
+
+          # - bash: |
+          #     set -v
+          #     echo $(NUGET_PACKAGES)
+          #     echo "-----------------------"
+          #     ls -la $(NUGET_PACKAGES)
+          #     echo "-----------------------"
+          #     tree $(Pipeline.Workspace)
+          #     echo "-----------------------"
+          #     cd $(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests
+          #     dotnet test --no-build --configuration ${{ parameters.buildConfiguration }}
+          #   displayName: "Checking that we can run dotnet test"
+
+          # - task: DotNetCoreCLI@2
+          #   displayName: "Run integration tests"
+          #   inputs:
+          #     command: test
+          #     projects: "$(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests/${{ parameters.apiName }}IntegrationTests.csproj"
+          #     testRunTitle: "Run integration tests"
+          #     publishTestResults: true
+          #     #arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -l:trx;LogFileName=$(Pipeline.Workspace)/TestResults/test_results_integration.trx -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_integration.xml"
+          #     arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage_integration.xml"
 
           # - task: PublishTestResults@2
           #   inputs:
@@ -225,14 +211,6 @@ stages:
           - publish: $(Pipeline.Workspace)/TestResults
             displayName: "Archive Integration Test results"
             artifact: IntegrationTestResults
-
-          - bash: |
-              echo "Check results..."
-              ls -la $(Pipeline.Workspace)/TestResults
-              cat $(Pipeline.Workspace)/TestResults/*xml
-            displayName: "testing"
-
-          - bash: echo "Save coverage report..."
 
     #############################################################################################
     # Stage: Publish Test Results
@@ -264,7 +242,7 @@ stages:
             displayName: "Publish unit and integration test coverage results"
 
             inputs:
-              codeCoverageTool: Cobertura
+              codeCoverageTool: "Cobertura"
               summaryFileLocation: "$(Pipeline.Workspace)/CodeCoverage/Cobertura.xml"
               reportDirectory: "$(Pipeline.Workspace)/CodeCoverage"
 

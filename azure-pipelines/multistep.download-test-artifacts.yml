@@ -1,0 +1,25 @@
+###############################################################################################
+# multistep.download-test-artifacts.yml
+###############################################################################################
+# downloads fully built source tree and Nuget packages so that tests can be run
+
+steps:
+  - download: current
+    artifact: BuiltSourceTree
+
+  - download: current
+    artifact: NuGetCache
+
+  - bash: |
+      ls -la $(Pipeline.Workspace)/NuGetCache
+      ls -la $(Pipeline.Workspace)
+      mkdir $(Pipeline.Workspace)/.nuget
+      ln -s $(Pipeline.Workspace)/NuGetCache $(Pipeline.Workspace)/.nuget/packages
+      ls -la $(Pipeline.Workspace)
+    displayName: "Link to correct nuget location"
+
+  - bash: |
+      mkdir -p $(Pipeline.Workspace)/s/src/
+      ln -s $(Pipeline.Workspace)/BuiltSourceTree/ $(Pipeline.Workspace)/s/src/Api.Core.SolarMeasurements
+      ls -la $(Pipeline.Workspace)/s/src/Api.Core.SolarMeasurements
+    displayName: "Setting up old source path as a link to BuiltSourceTree"

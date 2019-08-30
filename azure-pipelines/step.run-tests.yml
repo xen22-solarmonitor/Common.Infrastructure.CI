@@ -1,0 +1,19 @@
+###############################################################################################
+# step.run-tests
+###############################################################################################
+
+parameters:
+  apiName: ""
+  projectPath: ""
+  title: ""
+  buildConfiguration: "Release"
+
+steps:
+  - task: DotNetCoreCLI@2
+    displayName: "Run unit tests"
+    inputs:
+      command: "test"
+      projects: "${{ parameters.projectPath }}"
+      testRunTitle: "${{ parameters.title }}"
+      publishTestResults: true
+      arguments: "--no-build --configuration ${{ parameters.buildConfiguration }} -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(Pipeline.Workspace)/TestResults/coverage.xml"
