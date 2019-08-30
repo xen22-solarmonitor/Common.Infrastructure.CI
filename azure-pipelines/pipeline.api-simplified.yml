@@ -12,10 +12,10 @@ stages:
   # Stage: Build
   #############################################################################################
 
-  - stage: Build
+  - stage: Build and test
 
     jobs:
-      - job: Build
+      - job: Build and test
 
         pool:
           vmImage: "ubuntu-latest"
@@ -85,125 +85,29 @@ stages:
               buildConfiguration: "${{ parameters.buildConfiguration }}"
               apiName: "${{ parameters.apiName }}"
 
-    #############################################################################################
-    # Stage: Tests
-    #############################################################################################
-  - stage: Tests
-
-    jobs:
-      - job: UnitTests
-
-        displayName: "Run unit tests"
-
-        pool:
-          vmImage: "ubuntu-latest"
-
-        steps:
-          ###############################################################################################
-
-          # skip source code checkout since we've already built and archived it
-          - checkout: none
-
-          ###############################################################################################
-
-          - template: "multistep.download-test-artifacts.yml"
-
-          ###############################################################################################
-
-          - template: "multistep.install-build-dependencies.yml"
-            parameters:
-              customDotnetVersion: "${{ parameters.customDotnetVersion }}"
-
           ###############################################################################################
 
           - template: "step.run-tests.yml"
             parameters:
               apiName: "${{ parameters.apiName }}"
-              projectPath: "$(Pipeline.Workspace)/BuiltSourceTree/test/unit/${{ parameters.apiName }}UnitTests/${{ parameters.apiName }}UnitTests.csproj"
-              title: "Run unit tests"
+              projectPath: "$(System.DefaultWorkingDirectory)/${{ parameters.apiName }}.sln"
+              title: "Run tests"
               buildConfiguration: "${{ parameters.buildConfiguration }}"
 
           ###############################################################################################
 
-          - publish: $(Pipeline.Workspace)/TestResults
-            displayName: "Archive Unit Test results"
+          - publish: "*/**/TestResults"
+            displayName: "Archive Test results"
             artifact: UnitTestResults
 
           ###############################################################################################
-
-      - job: IntegrationTests
-        dependsOn: [] # this removes the implicit dependency on previous job and causes this to run in parallel
-        displayName: "Run integration tests"
-        pool:
-          vmImage: "ubuntu-latest"
-        steps:
-          ###############################################################################################
-
-          # skip source code checkout since we've already built and archived it
-          - checkout: none
-
-          ###############################################################################################
-
-          - template: "multistep.download-test-artifacts.yml"
-
-          ###############################################################################################
-
-          - template: "multistep.install-build-dependencies.yml"
-            parameters:
-              customDotnetVersion: "${{ parameters.customDotnetVersion }}"
-
-          ###############################################################################################
-
-          - template: "step.run-tests.yml"
-            parameters:
-              apiName: "${{ parameters.apiName }}"
-              projectPath: "$(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests/${{ parameters.apiName }}IntegrationTests.csproj"
-              title: "Run integration tests"
-              buildConfiguration: "${{ parameters.buildConfiguration }}"
-
-          ###############################################################################################
-
-          # - bash: |
-          #     set -v
-          #     echo $(NUGET_PACKAGES)
-          #     echo "-----------------------"
-          #     ls -la $(NUGET_PACKAGES)
-          #     echo "-----------------------"
-          #     tree $(Pipeline.Workspace)
-          #     echo "-----------------------"
-          #     cd $(Pipeline.Workspace)/BuiltSourceTree/test/integration/${{ parameters.apiName }}IntegrationTests
-          #     dotnet test --no-build --configuration ${{ parameters.buildConfiguration }}
-          #   displayName: "Checking that we can run dotnet test"
-
-          - publish: $(Pipeline.Workspace)/TestResults
-            displayName: "Archive Integration Test results"
-            artifact: IntegrationTestResults
-
-    #############################################################################################
-    # Stage: Publish Test Results
-    #############################################################################################
-  - stage: PublishTestResults
-    jobs:
-      - job: PublishTestResults
-
-        displayName: "Collate and publish test coverage results"
-
-        pool:
-          vmImage: "ubuntu-latest"
-
-        steps:
-          - checkout: none
-
-          - download: current
-            artifact: UnitTestResults
-
-          - download: current
-            artifact: IntegrationTestResults
 
           - bash: |
               dotnet tool install -g dotnet-reportgenerator-globaltool
-              reportgenerator -reports:$(Pipeline.Workspace)/**/coverage_*.xml -targetdir:$(Pipeline.Workspace)/CodeCoverage -reporttypes:HtmlInline_AzurePipelines;Cobertura
+              reportgenerator -reports:$(System.DefaultWorkingDirectory)/**/coverage.xml -targetdir:$(Pipeline.Workspace)/CodeCoverage -reporttypes:HtmlInline_AzurePipelines\;Cobertura
             displayName: Create Code coverage report
+
+          ###############################################################################################
 
           - task: PublishCodeCoverageResults@1
             displayName: "Publish unit and integration test coverage results"
