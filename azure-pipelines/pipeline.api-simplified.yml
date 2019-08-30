@@ -12,10 +12,12 @@ stages:
   # Stage: Build
   #############################################################################################
 
-  - stage: Build and test
+  - stage: Build_and_test
+    displayName: "Build"
 
     jobs:
-      - job: Build and test
+      - job: Build_and_test
+        displayName: "Build and test"
 
         pool:
           vmImage: "ubuntu-latest"
