@@ -40,24 +40,6 @@ steps:
     displayName: "Archive API Dockerfile"
     artifact: Dockerfile
 
-    # Note: we cannot publish just the binaries for the unit and integration tests because we also need the source code
-  #       when we do code coverage
-  #    - publish: $(System.DefaultWorkingDirectory)/test/unit/Api.Core.SolarMeasurementsUnitTests/bin/${{ parameters.buildConfiguration }}/netcoreapp3.0/publish/
-  #      displayName: 'Archive Unit test binaries'
-  #      artifact: UnitTestBinaries
-  #
-  #    - publish: $(System.DefaultWorkingDirectory)/test/integration/Api.Core.SolarMeasurementsIntegrationTests/bin/${{ parameters.buildConfiguration }}/netcoreapp3.0/publish/
-  #      displayName: 'Archive Integration test binaries'
-  #      artifact: IntegrationTestBinaries
-
-  - publish: $(System.DefaultWorkingDirectory)
-    displayName: "Archive fully built source tree"
-    artifact: BuiltSourceTree
-
-  - publish: $(NUGET_PACKAGES)
-    displayName: "Archive external cached NuGet dependencies"
-    artifact: NuGetCache
-
     # Publish all variables from this stage as a pipeline artifact
   - publish: $(Pipeline.Workspace)/variables
     displayName: "Archive Build stage variables for a later stages"
