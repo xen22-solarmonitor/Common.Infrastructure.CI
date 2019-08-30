@@ -1,0 +1,21 @@
+###############################################################################################
+# multistep.archive-build-tree.yml
+###############################################################################################
+
+# this set of steps archives various binaries and other files produced by the build:
+# - swagger.json
+# - Fully built API source tree
+# - Build dependencies (Nuget package cache)
+
+parameters:
+  buildConfiguration: "Release"
+  apiName: ""
+
+steps:
+  - publish: $(System.DefaultWorkingDirectory)
+    displayName: "Archive fully built source tree"
+    artifact: BuiltSourceTree
+
+  - publish: $(NUGET_PACKAGES)
+    displayName: "Archive external cached NuGet dependencies"
+    artifact: NuGetCache

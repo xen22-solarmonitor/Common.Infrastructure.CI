@@ -98,15 +98,22 @@ stages:
 
           ###############################################################################################
 
-          # - publish: "*/**/TestResults"
-          #   displayName: "Archive Test results"
-          #   artifact: UnitTestResults
+          - task: CopyFiles@2
+            inputs:
+              sourceFolder: "$(Agent.TempDirectory)"
+              contents: "*.trx"
+              targetFolder: $(Build.ArtifactStagingDirectory)
+
+          - publish: "$(Build.ArtifactStagingDirectory)"
+            displayName: "Archive test results"
+            artifact: TestResults
 
           ###############################################################################################
 
           - bash: |
               dotnet tool install -g dotnet-reportgenerator-globaltool
               reportgenerator -reports:$(System.DefaultWorkingDirectory)/**/coverage.xml -targetdir:$(Pipeline.Workspace)/CodeCoverage -reporttypes:HtmlInline_AzurePipelines\;Cobertura
+              ls -la $(Pipeline.Workspace)/CodeCoverage
             displayName: Create Code coverage report
 
           ###############################################################################################
@@ -118,6 +125,7 @@ stages:
               codeCoverageTool: "Cobertura"
               summaryFileLocation: "$(Pipeline.Workspace)/CodeCoverage/Cobertura.xml"
               reportDirectory: "$(Pipeline.Workspace)/CodeCoverage"
+              failIfCoverageEmpty: true
 
     #############################################################################################
     # Stage: Publish

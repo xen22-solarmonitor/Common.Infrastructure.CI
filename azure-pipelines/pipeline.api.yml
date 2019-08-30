@@ -85,6 +85,13 @@ stages:
               buildConfiguration: "${{ parameters.buildConfiguration }}"
               apiName: "${{ parameters.apiName }}"
 
+          ###############################################################################################
+
+          - template: "multistep.archive-build-tree.yml"
+            parameters:
+              buildConfiguration: "${{ parameters.buildConfiguration }}"
+              apiName: "${{ parameters.apiName }}"
+
     #############################################################################################
     # Stage: Tests
     #############################################################################################
