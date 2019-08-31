@@ -142,16 +142,27 @@ stages:
         steps:
           - checkout: none
 
-          #        - download: current
-          #          artifact: ApiBinaries
-          #
-          #        - download: current
-          #          artifact: Dockerfile
+          - download: current
+            artifact: ApiBinaries
 
           - download: current
-            artifact: BuiltSourceTree
+            artifact: Dockerfile
 
-          - bash: ls -lF $(Pipeline.Workspace)/BuiltSourceTree
+          - bash: |
+              echo "workspace dir"
+              ls -la $(Pipeline.Workspace)/Dockerfile
+              echo "Dockerfile dir:"
+              ls -la $(Pipeline.Workspace)/Dockerfile
+              echo "publish dir:"
+              ls -la $(Pipeline.Workspace)/ApiBinaries
+              mkdir -p "$(Pipeline.Workspace)/Dockerfile/bin/Release/netcoreapp3.0/"
+              ln -s $(Pipeline.Workspace)/ApiBinaries $(Pipeline.Workspace)/Dockerfile/bin/Release/netcoreapp3.0/publish
+            displayName: "Link from Docker dir to publish dir"
+
+          # - download: current
+          #   artifact: BuiltSourceTree
+
+          # - bash: ls -lF $(Pipeline.Workspace)/BuiltSourceTree
           #ApiBinaries $(Pipeline.Workspace)/Dockerfile $(Pipeline.Workspace)/TestResults
 
           - download: current
@@ -183,7 +194,8 @@ stages:
             displayName: "Create Docker image"
             inputs:
               command: "build"
-              Dockerfile: "$(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}/Dockerfile"
+              #Dockerfile: "$(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}/Dockerfile"
+              Dockerfile: "$(Pipeline.Workspace)/Dockerfile/Dockerfile"
               tags: "$(buildVersion)"
               repository: "${{ parameters.dockerId }}/${{ parameters.dockerContainerTag }}"
 
@@ -193,7 +205,8 @@ stages:
             displayName: "Push Docker image"
             inputs:
               command: "push"
-              Dockerfile: "$(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}/Dockerfile"
+              #Dockerfile: "$(Pipeline.Workspace)/BuiltSourceTree/src/${{ parameters.apiName }}/Dockerfile"
+              Dockerfile: "$(Pipeline.Workspace)/Dockerfile/Dockerfile"
               tags: "$(buildVersion)"
               repository: "${{ parameters.dockerId }}/${{ parameters.dockerContainerTag }}"
 
@@ -210,10 +223,10 @@ stages:
             parameters:
               sdk: "${{ parameters.customDotnetVersion }}"
 
-          - download: current
-            artifact: BuiltSourceTree
+          # - download: current
+          #   artifact: BuiltSourceTree
 
-            ### TODO: replace this with custom step
+          ### TODO: replace this with custom step
           - download: current
             displayName: 'Retrieve "variables" from pipeline archive'
             artifact: variables
