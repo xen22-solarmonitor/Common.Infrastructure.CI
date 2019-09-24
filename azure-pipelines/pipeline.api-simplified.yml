@@ -145,13 +145,17 @@ stages:
           - download: current
             artifact: ApiBinaries
 
-          - bash: |
-              mkdir -p ./ApiBinaries/bin/Release/netcoreapp3.0
-              ln -s ./ApiBinaries ./ApiBinaries/bin/Release/netcoreapp3.0/publish
-            displayName: "Setting up link to binary dir so that Dockerfile has the expected path structure"
-
           - download: current
             artifact: Dockerfile
+
+          - bash: |
+              ls -la 
+              ls -la Dockerfile
+              ls -la ApiBinaries
+              mkdir -p ./Dockerfile/bin/Release/netcoreapp3.0
+              ln -s ./ApiBinaries ./Dockerfile/bin/Release/netcoreapp3.0/publish
+              ls -la ./Dockerfile/bin/Release/netcoreapp3.0
+            displayName: "Setting up link to binary dir so that Dockerfile has the expected path structure"
 
           - bash: |
               echo "workspace dir"
