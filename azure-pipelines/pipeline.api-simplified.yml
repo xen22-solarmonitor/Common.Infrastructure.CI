@@ -149,6 +149,7 @@ stages:
             artifact: Dockerfile
 
           - bash: |
+              mkdir -p "$(Pipeline.Workspace)/Dockerfile/bin/Release/netcoreapp3.0/"
               mv $(Pipeline.Workspace)/ApiBinaries $(Pipeline.Workspace)/Dockerfile/bin/Release/netcoreapp3.0/publish
             displayName: "Re-creating build structure so that docker finds binaries in the expected place"
 
