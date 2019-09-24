@@ -149,24 +149,16 @@ stages:
             artifact: Dockerfile
 
           - bash: |
-              ls -la 
-              ls -la Dockerfile
-              ls -la ApiBinaries
-              mkdir -p ./Dockerfile/bin/Release/netcoreapp3.0
-              ln -s ./ApiBinaries ./Dockerfile/bin/Release/netcoreapp3.0/publish
-              ls -la ./Dockerfile/bin/Release/netcoreapp3.0
-            displayName: "Setting up link to binary dir so that Dockerfile has the expected path structure"
-
-          - bash: |
               echo "workspace dir"
-              ls -la $(Pipeline.Workspace)/Dockerfile
+              ls -la $(Pipeline.Workspace)
               echo "Dockerfile dir:"
               ls -la $(Pipeline.Workspace)/Dockerfile
               echo "publish dir:"
               ls -la $(Pipeline.Workspace)/ApiBinaries
               mkdir -p "$(Pipeline.Workspace)/Dockerfile/bin/Release/netcoreapp3.0/"
-              ln -s $(Pipeline.Workspace)/ApiBinaries $(Pipeline.Workspace)/Dockerfile/bin/Release/netcoreapp3.0/publish
-            displayName: "Link from Docker dir to publish dir"
+              #ln -s $(Pipeline.Workspace)/ApiBinaries $(Pipeline.Workspace)/Dockerfile/bin/Release/netcoreapp3.0/publish
+              cp -R $(Pipeline.Workspace)/ApiBinaries $(Pipeline.Workspace)/Dockerfile/bin/Release/netcoreapp3.0/publish
+            displayName: "Copy binaries to the Docker dir (as the publish dir)"
 
           # - download: current
           #   artifact: BuiltSourceTree
