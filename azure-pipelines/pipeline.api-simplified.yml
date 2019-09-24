@@ -145,6 +145,11 @@ stages:
           - download: current
             artifact: ApiBinaries
 
+          - bash: |
+              mkdir -p ./ApiBinaries/bin/Release/netcoreapp3.0
+              ln -s ./ApiBinaries ./ApiBinaries/bin/Release/netcoreapp3.0/publish
+            displayName: "Setting up link to binary dir so that Dockerfile has the expected path structure"
+
           - download: current
             artifact: Dockerfile
 
