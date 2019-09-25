@@ -25,6 +25,12 @@ steps:
       packageType: sdk
       version: 3.x
 
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core SDK 2.1.x'
+    inputs:
+      packageType: sdk
+      version: 2.1.x
+
   # - template: "step.install-custom-sdk.yml"
   #   parameters:
   #     sdk: "${{ parameters.customDotnetVersion }}"
